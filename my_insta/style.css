@@ -1,0 +1,88 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #fafafa;
+  }
+  
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+    padding: 10px 20px;
+    border-bottom: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+  }
+  
+  .logo {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  
+  .search {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  
+  .nav-icons span {
+    margin-left: 15px;
+    font-size: 20px;
+    cursor: pointer;
+  }
+  
+  .stories {
+    display: flex;
+    padding: 10px;
+    overflow-x: auto;
+    background-color: white;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .story {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: #ccc;
+    margin-right: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+  }
+  
+  .feed {
+    max-width: 600px;
+    margin: 20px auto;
+  }
+  
+  .post {
+    background-color: white;
+    border: 1px solid #ddd;
+    margin-bottom: 20px;
+    border-radius: 5px;
+  }
+  
+  .post-header {
+    padding: 10px;
+    font-weight: bold;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .post-img {
+    width: 100%;
+    height: auto;
+  }
+  
+  .post-actions {
+    padding: 10px;
+    font-size: 18px;
+  }
+  
+  .post-caption {
+    padding: 0 10px 10px 10px;
+    font-size: 14px;
+  }
+  
