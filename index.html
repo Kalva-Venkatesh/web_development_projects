@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head-Controlled Temple Run</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background-color: #000;
+            color: white;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #video-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 200px;
+            height: 150px;
+            border: 2px solid white;
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 100;
+            background-color: #333;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        #input-video {
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+        }
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #ui-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: right;
+            min-width: 150px;
+            border: 2px solid #4CAF50;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        #score {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+        #start-button {
+            padding: 15px 30px;
+            font-size: 1.5em;
+            background: linear-gradient(to right, #4CAF50, #2E8B57);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        #start-button:hover {
+            transform: scale(1.05);
+        }
+        #instructions {
+            max-width: 80%;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+        #path-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 30px;
+        }
+        .path-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .path-dot.active {
+            background: #4CAF50;
+            transform: scale(1.3);
+            box-shadow: 0 0 10px #4CAF50;
+        }
+        #restart-button {
+            padding: 12px 25px;
+            font-size: 1.2em;
+            background: linear-gradient(to right, #4CAF50, #2E8B57);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        #restart-button:hover {
+            transform: scale(1.05);
+        }
+        .game-title {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: #4CAF50;
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+        }
+        .score-display {
+            font-size: 1.8em;
+            margin: 10px 0;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="container">
+        <div id="video-container">
+            <video id="input-video" autoplay muted playsinline></video>
+        </div>
+        <canvas id="game-canvas"></canvas>
+        <div id="ui-panel">
+            <div>Score: <span id="score">0</span></div>
+            <div>Distance: <span id="distance">0</span>m</div>
+        </div>
+        <div id="path-indicator">
+            <div class="path-dot" id="left-path"></div>
+            <div class="path-dot" id="center-path"></div>
+            <div class="path-dot" id="right-path"></div>
+        </div>
+        <div id="start-screen">
+            <h1 class="game-title">Temple Run</h1>
+            <div id="instructions">
+                <p>Use your head movements to control the runner:</p>
+                <p>← Turn head left to move left</p>
+                <p>→ Turn head right to move right</p>
+                <p>Keep your head centered to stay in the middle</p>
+                <p>Avoid obstacles to score points!</p>
+            </div>
+            <button id="start-button">Start Adventure</button>
+        </div>
+        <div id="game-over">
+            <h1 class="game-title">Game Over</h1>
+            <div class="score-display" id="final-score">Score: 0</div>
+            <div class="score-display" id="final-distance">Distance: 0m</div>
+            <button id="restart-button">Try Again</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- DOM Elements ---
+        const videoElement = document.getElementById('input-video');
+        const gameCanvas = document.getElementById('game-canvas');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const scoreElement = document.getElementById('score');
+        const distanceElement = document.getElementById('distance');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreElement = document.getElementById('final-score');
+        const finalDistanceElement = document.getElementById('final-distance');
+        const leftPathDot = document.getElementById('left-path');
+        const centerPathDot = document.getElementById('center-path');
+        const rightPathDot = document.getElementById('right-path');
+
+        // --- Game Constants ---
+        const LANE_POSITIONS = [-2, 0, 2]; // Left, Center, Right
+        const LANE_CHANGE_SPEED = 0.2;
+        const RUNNER_SPEED = 10;
+        const OBSTACLE_TYPES = ['tree', 'rock', 'pit'];
+        const OBSTACLE_SPACING = 15;
+        const PATH_SEGMENT_LENGTH = 50;
+        const PATH_SEGMENTS = 20;
+        const BACKGROUND_SCROLL_SPEED = 0.5;
+
+        // --- Game State ---
+        let gameStarted = false;
+        let score = 0;
+        let distance = 0;
+        let currentLane = 1; // 0: left, 1: center, 2: right
+        let targetLane = 1;
+        let gameOver = false;
+        let lastObstaclePosition = 0;
+        let headPosition = 0; // -1 (left) to 1 (right)
+        let faceDetected = false;
+
+        // --- Three.js Setup ---
+        let scene, camera, renderer, runner;
+        let pathSegments = [];
+        let obstacles = [];
+        let leftBackgrounds = [];
+        let rightBackgrounds = [];
+        let backgroundTextures = [];
+
+        async function initThreeJS() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // Sky blue
+            scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
+
+            // Camera - Follows the runner
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 3, 5);
+            camera.lookAt(0, 1, -5);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: gameCanvas, 
+                antialias: true,
+                powerPreference: "high-performance"
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            scene.add(directionalLight);
+
+            // Create path and backgrounds
+            createPathSegments();
+            createBackgrounds();
+
+            // Runner (improved appearance)
+            const runnerGeometry = new THREE.BoxGeometry(0.5, 1.7, 0.5);
+            const runnerMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x4CAF50,
+                roughness: 0.3,
+                metalness: 0.2
+            });
+            runner = new THREE.Mesh(runnerGeometry, runnerMaterial);
+            runner.position.y = 0.85;
+            runner.castShadow = true;
+            scene.add(runner);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createPathSegments() {
+            // Clear existing segments
+            pathSegments.forEach(segment => scene.remove(segment));
+            pathSegments = [];
+
+            // Create new path segments
+            for (let i = 0; i < PATH_SEGMENTS; i++) {
+                const segmentGeometry = new THREE.PlaneGeometry(6, PATH_SEGMENT_LENGTH);
+                const segmentMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x8B4513,
+                    roughness: 0.8,
+                    metalness: 0.1
+                });
+                const segment = new THREE.Mesh(segmentGeometry, segmentMaterial);
+                segment.rotation.x = -Math.PI / 2;
+                segment.position.z = -PATH_SEGMENT_LENGTH * i;
+                segment.receiveShadow = true;
+                scene.add(segment);
+                pathSegments.push(segment);
+            }
+        }
+
+        function createBackgrounds() {
+            // Clear existing backgrounds
+            leftBackgrounds.forEach(bg => scene.remove(bg));
+            rightBackgrounds.forEach(bg => scene.remove(bg));
+            leftBackgrounds = [];
+            rightBackgrounds = [];
+
+            // Create background textures (simple colors for demo)
+            const leftBgMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2E8B57,
+                roughness: 0.9
+            });
+            const rightBgMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2E8B57,
+                roughness: 0.9
+            });
+
+            // Create background segments
+            for (let i = 0; i < PATH_SEGMENTS; i++) {
+                // Left background
+                const leftBgGeometry = new THREE.PlaneGeometry(10, PATH_SEGMENT_LENGTH);
+                const leftBg = new THREE.Mesh(leftBgGeometry, leftBgMaterial.clone());
+                leftBg.rotation.x = -Math.PI / 2;
+                leftBg.position.set(-8, 0, -PATH_SEGMENT_LENGTH * i);
+                scene.add(leftBg);
+                leftBackgrounds.push(leftBg);
+
+                // Right background
+                const rightBgGeometry = new THREE.PlaneGeometry(10, PATH_SEGMENT_LENGTH);
+                const rightBg = new THREE.Mesh(rightBgGeometry, rightBgMaterial.clone());
+                rightBg.rotation.x = -Math.PI / 2;
+                rightBg.position.set(8, 0, -PATH_SEGMENT_LENGTH * i);
+                scene.add(rightBg);
+                rightBackgrounds.push(rightBg);
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- MediaPipe Face Detection ---
+        const faceDetection = new FaceDetection({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+        });
+
+        faceDetection.setOptions({
+            model: 'short',
+            minDetectionConfidence: 0.5
+        });
+
+        faceDetection.onResults(onFaceDetectionResults);
+
+        const camera_utils = new Camera(videoElement, {
+            onFrame: async () => {
+                if (gameStarted) {
+                    await faceDetection.send({ image: videoElement });
+                }
+            },
+            width: 200,
+            height: 150
+        });
+
+        function onFaceDetectionResults(results) {
+            if (!results.detections || results.detections.length === 0) {
+                faceDetected = false;
+                return;
+            }
+
+            faceDetected = true;
+            const detection = results.detections[0];
+            const nose = detection.landmarks[2]; // Nose tip is landmark 2
+            
+            // Calculate head position (-1 to 1) based on nose position
+            headPosition = (nose.x * 2) - 1; // Convert from 0-1 to -1 to 1
+            
+            // Determine target lane based on head position
+            if (headPosition < -0.3 && currentLane > 0) {
+                targetLane = currentLane - 1;
+            } else if (headPosition > 0.3 && currentLane < 2) {
+                targetLane = currentLane + 1;
+            }
+            
+            // Update path indicator
+            updatePathIndicator();
+        }
+
+        function updatePathIndicator() {
+            leftPathDot.classList.remove('active');
+            centerPathDot.classList.remove('active');
+            rightPathDot.classList.remove('active');
+            
+            if (targetLane === 0) leftPathDot.classList.add('active');
+            else if (targetLane === 1) centerPathDot.classList.add('active');
+            else if (targetLane === 2) rightPathDot.classList.add('active');
+        }
+
+        // --- Game Logic ---
+        function startGame() {
+            gameStarted = true;
+            gameOver = false;
+            score = 0;
+            distance = 0;
+            currentLane = 1;
+            targetLane = 1;
+            lastObstaclePosition = 0;
+            
+            // Clear existing obstacles
+            obstacles.forEach(obstacle => scene.remove(obstacle.mesh));
+            obstacles = [];
+            
+            // Reset path and backgrounds
+            createPathSegments();
+            createBackgrounds();
+            
+            // Reset runner position
+            runner.position.set(0, 0.85, 0);
+            
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            // Start camera
+            camera_utils.start();
+            
+            // Start game loop
+            animate();
+        }
+
+        function endGame() {
+            gameStarted = false;
+            gameOver = true;
+            
+            finalScoreElement.textContent = `Score: ${score}`;
+            finalDistanceElement.textContent = `Distance: ${Math.floor(distance)}m`;
+            gameOverScreen.style.display = 'flex';
+            
+            // Stop camera
+            camera_utils.stop();
+        }
+
+        function createObstacle(type, lane) {
+            let obstacle;
+            
+            switch(type) {
+                case 'tree':
+                    const treeGeometry = new THREE.ConeGeometry(0.5, 2, 8);
+                    const treeMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0x228B22,
+                        roughness: 0.7
+                    });
+                    obstacle = new THREE.Mesh(treeGeometry, treeMaterial);
+                    obstacle.position.y = 1;
+                    break;
+                    
+                case 'rock':
+                    const rockGeometry = new THREE.SphereGeometry(0.6, 16, 16);
+                    const rockMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0x808080,
+                        roughness: 0.8
+                    });
+                    obstacle = new THREE.Mesh(rockGeometry, rockMaterial);
+                    obstacle.position.y = 0.6;
+                    break;
+                    
+                case 'pit':
+                    const pitGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 32);
+                    const pitMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0x000000,
+                        roughness: 0.9
+                    });
+                    obstacle = new THREE.Mesh(pitGeometry, pitMaterial);
+                    obstacle.position.y = 0.1;
+                    break;
+            }
+            
+            obstacle.position.x = LANE_POSITIONS[lane];
+            obstacle.castShadow = true;
+            return obstacle;
+        }
+
+        function spawnObstacle() {
+            const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+            const lane = Math.floor(Math.random() * 3);
+            
+            // Don't spawn pits in the same lane twice in a row
+            if (type === 'pit' && obstacles.length > 0 && obstacles[obstacles.length-1].type === 'pit' && 
+                obstacles[obstacles.length-1].lane === lane) {
+                return; // Skip this spawn
+            }
+            
+            const obstacle = createObstacle(type, lane);
+            obstacle.position.z = -50;
+            scene.add(obstacle);
+            obstacles.push({
+                mesh: obstacle,
+                lane: lane,
+                type: type,
+                passed: false
+            });
+        }
+
+        function updateRunnerPosition() {
+            // Smooth lane transition
+            const targetX = LANE_POSITIONS[targetLane];
+            runner.position.x = THREE.MathUtils.lerp(runner.position.x, targetX, LANE_CHANGE_SPEED);
+            
+            // Update current lane if close enough
+            if (Math.abs(runner.position.x - targetX) < 0.1) {
+                currentLane = targetLane;
+            }
+        }
+
+        function updateObstacles(deltaTime) {
+            // Move obstacles toward the runner
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                obstacle.mesh.position.z += RUNNER_SPEED * deltaTime;
+                
+                // Check for collisions
+                if (obstacle.mesh.position.z > -1 && obstacle.mesh.position.z < 1) {
+                    const distanceX = Math.abs(runner.position.x - obstacle.mesh.position.x);
+                    
+                    if (distanceX < 0.7) {
+                        // Collision detected
+                        endGame();
+                        return;
+                    }
+                }
+                
+                // Score points when passing obstacles
+                if (!obstacle.passed && obstacle.mesh.position.z > 0) {
+                    obstacle.passed = true;
+                    score += 10;
+                }
+                
+                // Remove obstacles that are behind the runner
+                if (obstacle.mesh.position.z > 10) {
+                    scene.remove(obstacle.mesh);
+                    obstacles.splice(i, 1);
+                }
+            }
+            
+            // Spawn new obstacles
+            if (distance - lastObstaclePosition > OBSTACLE_SPACING) {
+                spawnObstacle();
+                lastObstaclePosition = distance;
+            }
+        }
+
+        function updatePathSegments(deltaTime) {
+            const moveAmount = RUNNER_SPEED * deltaTime;
+            
+            pathSegments.forEach(segment => {
+                segment.position.z += moveAmount;
+                
+                // Reset segment position when it goes too far
+                if (segment.position.z > PATH_SEGMENT_LENGTH) {
+                    segment.position.z = pathSegments[0].position.z - PATH_SEGMENT_LENGTH;
+                    
+                    // Move to end of array
+                    pathSegments.push(pathSegments.shift());
+                }
+            });
+        }
+
+        function updateBackgrounds(deltaTime) {
+            const moveAmount = RUNNER_SPEED * deltaTime * BACKGROUND_SCROLL_SPEED;
+            
+            leftBackgrounds.forEach(bg => {
+                bg.position.z += moveAmount;
+                
+                if (bg.position.z > PATH_SEGMENT_LENGTH) {
+                    bg.position.z = leftBackgrounds[0].position.z - PATH_SEGMENT_LENGTH;
+                    leftBackgrounds.push(leftBackgrounds.shift());
+                }
+            });
+            
+            rightBackgrounds.forEach(bg => {
+                bg.position.z += moveAmount;
+                
+                if (bg.position.z > PATH_SEGMENT_LENGTH) {
+                    bg.position.z = rightBackgrounds[0].position.z - PATH_SEGMENT_LENGTH;
+                    rightBackgrounds.push(rightBackgrounds.shift());
+                }
+            });
+        }
+
+        // --- Animation Loop ---
+        let lastTime = 0;
+        function animate(time) {
+            if (!gameStarted || gameOver) return;
+            
+            requestAnimationFrame(animate);
+            
+            const deltaTime = (time - lastTime) / 1000 || 0.016; // Convert to seconds
+            lastTime = time;
+            
+            // Update game state
+            distance += RUNNER_SPEED * deltaTime;
+            updateRunnerPosition();
+            updateObstacles(deltaTime);
+            updatePathSegments(deltaTime);
+            updateBackgrounds(deltaTime);
+            
+            // Update UI
+            scoreElement.textContent = score;
+            distanceElement.textContent = Math.floor(distance);
+            
+            // Camera follows runner
+            camera.position.x = runner.position.x;
+            camera.position.z = runner.position.z + 5;
+            camera.lookAt(runner.position.x, 1, runner.position.z - 5);
+            
+            renderer.render(scene, camera);
+        }
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+
+        // Keyboard fallback controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameStarted) return;
+            
+            if (e.key === 'ArrowLeft' && targetLane > 0) {
+                targetLane--;
+                updatePathIndicator();
+            } else if (e.key === 'ArrowRight' && targetLane < 2) {
+                targetLane++;
+                updatePathIndicator();
+            }
+        });
+
+        // --- Initialization ---
+        initThreeJS();
+    </script>
+</body>
+</html>
